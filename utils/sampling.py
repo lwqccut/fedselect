@@ -51,7 +51,12 @@ def noniid(
     ]
 
     targets = None
-    targets = [elem[1].item() for elem in dataset]
+    # Use dataset metadata when available to avoid loading every image.
+    if hasattr(dataset, "targets"):
+        targets = [int(target) for target in dataset.targets]
+    else:
+        # torchvision versions differ in whether labels are ints or tensors.
+        targets = [int(elem[1]) for elem in dataset]
 
     # dictionary of indices in the dataset for each label
     idxs_dict = {}
@@ -107,10 +112,11 @@ def noniid(
 
     for i in range(num_users):
         num_elem = len(dict_users[i])
+        shard_size = num_elem // shard_per_user
         dict_users[i] = np.concatenate(
             [
                 dict_users[i][k : k + size]
-                for k in range(0, num_elem, num_elem // shard_per_user + 1)
+                for k in range(0, num_elem, shard_size)
             ]
         )
 

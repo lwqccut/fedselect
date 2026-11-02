@@ -1,0 +1,10 @@
+.venv/
+data/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pt
+*.log
+*.csv
+!experiments/*.csv
+outputs/
