@@ -58,8 +58,51 @@ def lth_args_parser():
         default=0.0,
         help="The percentage of data that servers also have across data of all clients.",
     )
-
+    parser.add_argument(
+        "--innovation-mixup",
+        action="store_true",
+        help="Apply client-local Mixup during alternating optimization.",
+    )
+    parser.add_argument(
+        "--mixup-alpha",
+        type=float,
+        default=0.2,
+        help="Beta distribution parameter for Mixup.",
+    )
+    parser.add_argument(
+        "--innovation-multiview-tta",
+        action="store_true",
+        help="Average logits from six original/mirrored small-rotation test views.",
+    )
+    parser.add_argument(
+        "--tta-angle",
+        type=float,
+        default=10.0,
+        help="Rotation angle used by multi-view test-time augmentation.",
+    )
     parser.add_argument("--seed", type=int, default=1, help="random seed (default: 1)")
+
+    parser.add_argument(
+        "--eval_every",
+        type=int,
+        default=10,
+        help="Evaluate client accuracy every N communication rounds (final round is always evaluated)",
+    )
+    parser.add_argument(
+        "--checkpoint_every",
+        type=int,
+        default=20,
+        help="Save a resumable checkpoint every N communication rounds",
+    )
+    parser.add_argument("--checkpoint_path", type=str, default="")
+    parser.add_argument("--resume_from", type=str, default="")
+    parser.add_argument("--metrics_csv", type=str, default="")
+    parser.add_argument(
+        "--full_cross_eval",
+        action="store_true",
+        help="Also compute the full client-by-client evaluation matrix at the end",
+    )
+    parser.add_argument("--disable_tqdm", action="store_true")
 
     args = parser.parse_args()
     return args

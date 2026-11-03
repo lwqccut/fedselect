@@ -1,8 +1,9 @@
 from torchvision import datasets, transforms
+from torchvision.transforms import v2
 from utils.sampling import iid, noniid
 import numpy as np
 import torch
-from typing import Dict, List, Tuple, Any
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 
 class DatasetSplit(torch.utils.data.Dataset):
@@ -25,35 +26,60 @@ class DatasetSplit(torch.utils.data.Dataset):
         return image, label
 
 
+class CachedTensorDataset(torch.utils.data.Dataset):
+    """Keep CIFAR images as raw uint8 tensors to avoid repeated PIL decoding."""
+
+    def __init__(
+        self,
+        dataset: torch.utils.data.Dataset,
+        transform: Optional[Callable] = None,
+    ) -> None:
+        image_array = np.asarray(dataset.data)
+        self.images = (
+            torch.from_numpy(image_array).permute(0, 3, 1, 2).contiguous()
+        )
+        self.targets = list(dataset.targets)
+        self.transform = transform
+
+    def __len__(self) -> int:
+        return self.images.shape[0]
+
+    def __getitem__(self, item: int) -> Tuple[torch.Tensor, int]:
+        image = self.images[item]
+        if self.transform is not None:
+            image = self.transform(image)
+        return image, int(self.targets[item])
+
+
 trans_mnist = transforms.Compose(
     [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
 )
-trans_cifar10_train = transforms.Compose(
+trans_cifar10_train = v2.Compose(
     [
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        v2.RandomCrop(32, padding=4),
+        v2.RandomHorizontalFlip(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
 )
-trans_cifar10_val = transforms.Compose(
+trans_cifar10_val = v2.Compose(
     [
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ]
 )
-trans_cifar100_train = transforms.Compose(
+trans_cifar100_train = v2.Compose(
     [
-        transforms.RandomCrop(32, padding=4),
-        transforms.RandomHorizontalFlip(),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276]),
+        v2.RandomCrop(32, padding=4),
+        v2.RandomHorizontalFlip(),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276]),
     ]
 )
-trans_cifar100_val = transforms.Compose(
+trans_cifar100_val = v2.Compose(
     [
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276]),
+        v2.ToDtype(torch.float32, scale=True),
+        v2.Normalize(mean=[0.507, 0.487, 0.441], std=[0.267, 0.256, 0.276]),
     ]
 )
 
@@ -73,11 +99,13 @@ def get_data(
         dict_users_test: Dictionary mapping users to test data indices
         rand_set_all: Random set assignments for non-iid splitting
     """
-    dataset_train = datasets.CIFAR10(
-        "data/cifar10", train=True, download=True, transform=trans_cifar10_train
+    dataset_train = CachedTensorDataset(
+        datasets.CIFAR10("data/cifar10", train=True, download=True),
+        transform=trans_cifar10_train,
     )
-    dataset_test = datasets.CIFAR10(
-        "data/cifar10", train=False, download=True, transform=trans_cifar10_val
+    dataset_test = CachedTensorDataset(
+        datasets.CIFAR10("data/cifar10", train=False, download=True),
+        transform=trans_cifar10_val,
     )
     if args.iid:
         dict_users_train = iid(dataset_train, args.num_users)

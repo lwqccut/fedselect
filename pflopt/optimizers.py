@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
+import random
 from collections import OrderedDict
 
 
@@ -61,14 +62,24 @@ def local_alt(
     device,
     clip_grad_norm=False,
     max_grad_norm=3.50,
+    mixup_alpha=0.0,
 ):
     assert isinstance(optimizer, MaskLocalAltSGD), "optimizer must be MaskLocalAltSGD"
     avg_loss_1 = 0
     for batch_idx, (data, target) in enumerate(data_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
+        if mixup_alpha > 0:
+            lam = random.betavariate(mixup_alpha, mixup_alpha)
+            permutation = torch.randperm(data.size(0), device=device)
+            data = lam * data + (1 - lam) * data[permutation]
         output = model(data)
-        loss = criterion(output, target)
+        if mixup_alpha > 0:
+            loss = lam * criterion(output, target) + (1 - lam) * criterion(
+                output, target[permutation]
+            )
+        else:
+            loss = criterion(output, target)
         avg_loss_1 += loss.item()
         loss.backward()
         if clip_grad_norm:
@@ -81,8 +92,17 @@ def local_alt(
     for batch_idx, (data, target) in enumerate(data_loader):
         data, target = data.to(device), target.to(device)
         optimizer.zero_grad()
+        if mixup_alpha > 0:
+            lam = random.betavariate(mixup_alpha, mixup_alpha)
+            permutation = torch.randperm(data.size(0), device=device)
+            data = lam * data + (1 - lam) * data[permutation]
         output = model(data)
-        loss = criterion(output, target)
+        if mixup_alpha > 0:
+            loss = lam * criterion(output, target) + (1 - lam) * criterion(
+                output, target[permutation]
+            )
+        else:
+            loss = criterion(output, target)
         avg_loss_2 += loss.item()
         loss.backward()
         if clip_grad_norm:

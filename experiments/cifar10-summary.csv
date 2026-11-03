@@ -1,0 +1,7 @@
+run,round_100_accuracy,delta_vs_reference,decision
+fedselect_reference,0.820410,0.000000,baseline
+client_local_mixup,0.821484,0.001074,component
+multiview_tta_reference_checkpoint,0.824512,0.004102,component
+mixup_plus_multiview_tta,0.826563,0.006152,retained
+client_weight_ema,0.815234,-0.005176,rejected
+mixup_plus_hflip_tta,0.822852,0.002442,rejected
